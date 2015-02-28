@@ -1,34 +1,77 @@
+<?php
+
+$contents=<<<END
+<html>
+  <body>
+    <h3>HTML Editor</h3>
+    <p>Hello World!</p>
+  </body>
+</html>
+END;
+
+if (!empty($_POST['file'])) {
+	$contents=file_get_contents($_POST['file']);
+}
+
+class SortedIterator extends SplHeap
+{
+	public function __construct(Iterator $iter)
+	{
+		foreach ($iter as $item)
+			$this->insert($item);
+	}
+	public function compare($b, $a)
+	{
+		return strcmp($a->getRealpath(), $b->getRealpath());
+	}
+}
+
+$files = new SortedIterator(new RecursiveIteratorIterator(new RecursiveDirectoryIterator(".", RecursiveDirectoryIterator::FOLLOW_SYMLINKS)));
+
+$form = '<form class="close" align="center" target="base" method="post"><select id="file" name="file">';
+foreach ($files as $file)
+{
+	//$form.="<option value=\"$path\">$path</option>";
+	$path=substr($file,2);
+	if (substr($file, -5) == '.html')
+		$form.="<option value=\"$path\">$path</option>";
+}
+$form.= '<input type="submit" id="load" value="Load"></form>';
+
+$topframe=<<<END
+<html class="expand close">
+	<head>
+		<style type="text/css">
+			.expand { width: 100%; height: 100%; }
+			.close { border: none; margin: 0px; padding: 0px; }
+			html,body { overflow: hidden; }
+		<\/style>
+	<\/head>
+	<body class="expand close" onload="document.f.ta.focus(); document.f.ta.select();">
+		$form
+		<form class="expand close" name="f">
+			<textarea class="expand close" style="background: #def;" name="ta" wrap="hard" spellcheck="false">
+			<\/textarea>
+		<\/form>
+	<\/body>
+<\/html>
+END;
+
+?>
 <!DOCTYPE html>
 <html>
-<head>
-<title>Real-time HTML Editor</title>
-<script type="text/javascript">
+	<head>
+		<title>Real-time HTML Editor</title>
+		<base target="base">
+		<script type="text/javascript">
 
-var editboxHTML = 
-'<html class="expand close">' +
-'<head>' +
-'<style type="text/css">' +
-'.expand { width: 100%; height: 100%; }' +
-'.close { border: none; margin: 0px; padding: 0px; }' +
-'html,body { overflow: hidden; }' +
-'<\/style>' +
-'<\/head>' +
-'<body class="expand close" onload="document.f.ta.focus(); document.f.ta.select();">' +
-'<form class="expand close" name="f">' +
-'<textarea class="expand close" style="background: #def;" name="ta" wrap="hard" spellcheck="false">' +
-'<\/textarea>' +
-'<\/form>' +
-'<\/body>' +
-'<\/html>';
+var editboxHTML = '<?php echo str_replace(array("\n", "\t"), "", $topframe); ?>';
 
-var defaultStuff = '<h3>Welcome to the real-time HTML editor!<\/h3>\n' +
-'<p>Type HTML in the textarea above, and it will magically appear in the frame below.<\/p>';
+var defaultStuff = <?php echo json_encode($contents); ?>;
 
-// I don't want this stuff to appear in the box at the top because I feel it's likely to be distracting.
-var extraStuff = '<div style="position:absolute; margin:.3em; bottom:0em; right:0em;"><small>\n  Created by <a href="http://www.squarefree.com/" target="_top">Jesse Ruderman<\/a> and hosted by <a href="http://www.dreamhost.com/rewards.cgi?jesseruderman" target="_top">DreamHost<\/a>.\n<\/small><\/div>';
 
 var old = '';
-         
+
 function init()
 {
   window.editbox.document.write(editboxHTML);
@@ -40,27 +83,23 @@ function init()
 function update()
 {
   var textarea = window.editbox.document.f.ta;
-  var d = dynamicframe.document; 
+  var d = dynamicframe.document;
 
   if (old != textarea.value) {
     old = textarea.value;
     d.open();
     d.write(old);
-    if (old.replace(/[\r\n]/g,'') == defaultStuff.replace(/[\r\n]/g,''))
-      d.write(extraStuff);
     d.close();
   }
 
   window.setTimeout(update, 150);
 }
 
-</script>
-</head>
-
-<frameset resizable="yes" rows="50%,*" onload="init();">
-  <!-- about:blank confuses opera, so use javascript: URLs instead -->
-  <frame name="editbox" src="javascript:'';">
-  <frame name="dynamicframe" src="javascript:'';">
-</frameset>
-
+		</script>
+	</head>
+	<frameset resizable="yes" rows="50%,*" onload="init();">
+		<!-- about:blank confuses opera, so use javascript: URLs instead -->
+		<frame name="editbox" src="javascript:'';">
+		<frame name="dynamicframe" src="javascript:'';">
+	</frameset>
 </html>
